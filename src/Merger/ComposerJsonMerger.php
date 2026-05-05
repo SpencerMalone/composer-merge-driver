@@ -6,6 +6,7 @@ namespace ComposerMergeDriver\Merger;
 
 use ComposerMergeDriver\Exception\MergeException;
 use ComposerMergeDriver\MergeContext;
+use ComposerMergeDriver\Support\ComposerLibraryInterface;
 use ComposerMergeDriver\Support\JsonHelper;
 
 /**
@@ -29,6 +30,10 @@ final class ComposerJsonMerger implements MergerInterface
     /** @var list<string> */
     private const DEEP_MERGE_KEYS = ['autoload', 'autoload-dev', 'scripts', 'extra', 'config', 'support'];
 
+    public function __construct(
+        private readonly ComposerLibraryInterface $composer,
+    ) {}
+
     public function merge(MergeContext $context): bool
     {
         $base   = JsonHelper::readFile($context->basePath);
@@ -41,6 +46,13 @@ final class ComposerJsonMerger implements MergerInterface
 
         foreach ($conflicts as $conflict) {
             fwrite(STDERR, "composer-merge-driver: CONFLICT (composer.json): {$conflict}\n");
+        }
+
+        if ($conflicts === [] && !$context->noResolve) {
+            foreach ($this->composer->validate($context->oursPath) as $error) {
+                fwrite(STDERR, "composer-merge-driver: INVALID (composer.json): {$error}\n");
+                $conflicts[] = $error;
+            }
         }
 
         return $conflicts === [];

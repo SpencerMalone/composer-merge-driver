@@ -7,6 +7,8 @@ namespace ComposerMergeDriver\Support;
 use Composer\Factory;
 use Composer\IO\NullIO;
 use Composer\Installer;
+use Composer\Package\Loader\ValidatingArrayLoader;
+use Composer\Util\ConfigValidator;
 use ComposerMergeDriver\Exception\MergeException;
 
 /**
@@ -87,6 +89,28 @@ final class ComposerLibrary implements ComposerLibraryInterface
             return true;
         } catch (\Throwable $e) {
             throw new MergeException('Composer dump-autoload failed: ' . $e->getMessage(), 0, $e);
+        }
+    }
+
+    /**
+     * Validate a composer.json file (equivalent to `composer validate --no-check-publish`).
+     * Returns a list of error strings, empty on success.
+     *
+     * @return list<string>
+     * @throws MergeException
+     */
+    public function validate(string $composerJsonPath): array
+    {
+        try {
+            $validator = new ConfigValidator(new NullIO());
+            [$errors, , ] = $validator->validate(
+                $composerJsonPath,
+                ValidatingArrayLoader::CHECK_ALL,
+                0,  // no CHECK_VERSION — version fields are uncommon but valid
+            );
+            return $errors;
+        } catch (\Throwable $e) {
+            throw new MergeException('composer.json validation failed: ' . $e->getMessage(), 0, $e);
         }
     }
 

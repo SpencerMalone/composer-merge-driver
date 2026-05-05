@@ -104,7 +104,7 @@ final class Application
         $library = new ComposerLibrary();
 
         return match ($context->fileType) {
-            FileType::ComposerJson   => new ComposerJsonMerger(),
+            FileType::ComposerJson   => new ComposerJsonMerger($library),
             FileType::ComposerLock   => new ComposerLockMerger($library),
             FileType::VendorComposer => new VendorFileMerger($library),
         };

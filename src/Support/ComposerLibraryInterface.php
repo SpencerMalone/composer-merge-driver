@@ -25,6 +25,15 @@ interface ComposerLibraryInterface
     public function dumpAutoload(string $cwd): bool;
 
     /**
+     * Validate a composer.json file (equivalent to `composer validate --no-check-publish`).
+     * Returns a list of error strings, empty on success.
+     *
+     * @return list<string>
+     * @throws MergeException
+     */
+    public function validate(string $composerJsonPath): array;
+
+    /**
      * Return true if the Composer library is available (classes can be loaded).
      */
     public function isAvailable(): bool;

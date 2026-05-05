@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ComposerMergeDriver\Tests\Merger;
 
 use ComposerMergeDriver\Merger\ComposerJsonMerger;
+use ComposerMergeDriver\Support\ComposerLibraryInterface;
 use ComposerMergeDriver\Tests\Support\MergeFixture;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -17,7 +18,10 @@ final class ComposerJsonMergerTest extends TestCase
     protected function setUp(): void
     {
         $this->fixture = new MergeFixture();
-        $this->merger  = new ComposerJsonMerger();
+        // noResolve=true in MergeFixture, so validate() is never called.
+        $library = $this->createMock(ComposerLibraryInterface::class);
+        $library->expects(self::never())->method('validate');
+        $this->merger  = new ComposerJsonMerger($library);
     }
 
     protected function tearDown(): void
@@ -282,5 +286,80 @@ final class ComposerJsonMergerTest extends TestCase
 
         self::assertTrue($clean);
         self::assertCount(0, $result['repositories'] ?? ['x']);
+    }
+
+    // ─── validation ──────────────────────────────────────────────────────────
+
+    #[Test]
+    public function validationErrorsFromLibraryReturnFalse(): void
+    {
+        $library = $this->createMock(ComposerLibraryInterface::class);
+        $library->method('validate')->willReturn(['require.vendor/pkg must be a string']);
+        $merger = new ComposerJsonMerger($library);
+
+        $base = $ours = $theirs = ['require' => ['php' => '^8.1']];
+        $ctx  = $this->makeNoResolveOffContext($base, $ours, $theirs);
+
+        $clean = $merger->merge($ctx);
+
+        self::assertFalse($clean);
+    }
+
+    #[Test]
+    public function validationIsSkippedWhenMergeHasConflicts(): void
+    {
+        // If there are merge conflicts, validate() must not be called at all.
+        $library = $this->createMock(ComposerLibraryInterface::class);
+        $library->expects(self::never())->method('validate');
+        $merger = new ComposerJsonMerger($library);
+
+        $base   = ['require' => ['vendor/pkg' => '^1.0']];
+        $ours   = ['require' => ['vendor/pkg' => '^2.0']];
+        $theirs = ['require' => ['vendor/pkg' => '^3.0']];
+        $ctx    = $this->makeNoResolveOffContext($base, $ours, $theirs);
+
+        $clean = $merger->merge($ctx);
+
+        self::assertFalse($clean);
+    }
+
+    #[Test]
+    public function validationIsSkippedWhenNoResolveIsTrue(): void
+    {
+        $library = $this->createMock(ComposerLibraryInterface::class);
+        $library->expects(self::never())->method('validate');
+        $merger = new ComposerJsonMerger($library);
+
+        // noResolve=true via MergeFixture — clean merge, but validate() still not called.
+        $base = $ours = $theirs = ['require' => ['php' => '^8.1']];
+        $ctx  = $this->fixture->make($base, $ours, $theirs);
+
+        $clean = $merger->merge($ctx);
+
+        self::assertTrue($clean);
+    }
+
+    // ─── helpers ─────────────────────────────────────────────────────────────
+
+    /**
+     * Build a MergeContext with noResolve=false, writing fixtures to temp files.
+     *
+     * @param array<string, mixed> $base
+     * @param array<string, mixed> $ours
+     * @param array<string, mixed> $theirs
+     */
+    private function makeNoResolveOffContext(array $base, array $ours, array $theirs): \ComposerMergeDriver\MergeContext
+    {
+        $ctx = $this->fixture->make($base, $ours, $theirs);
+        return new \ComposerMergeDriver\MergeContext(
+            basePath:   $ctx->basePath,
+            oursPath:   $ctx->oursPath,
+            theirsPath: $ctx->theirsPath,
+            markerSize: $ctx->markerSize,
+            pathname:   $ctx->pathname,
+            fileType:   $ctx->fileType,
+            workingDir: $ctx->workingDir,
+            noResolve:  false,
+        );
     }
 }
