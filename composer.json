@@ -1,0 +1,32 @@
+{
+    "name": "spencermalone/composer-merge-driver",
+    "description": "A modern PHP 8+ git merge driver that resolves conflicts in composer.json, composer.lock, and vendor/composer files using Composer internals, including re-resolving dependencies when needed.",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": "^8.1",
+        "composer/composer": "^2.6"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^2.0",
+        "phpstan/phpstan-strict-rules": "^2.0",
+        "phpunit/phpunit": "^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "ComposerMergeDriver\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "ComposerMergeDriver\\Tests\\": "tests/"
+        }
+    },
+    "bin": [
+        "bin/composer-merge-driver"
+    ],
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    }
+}

@@ -1,0 +1,10 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Example .gitattributes for composer-merge-driver
+#
+# Copy the relevant lines into your project's .gitattributes and add the
+# [merge "composer-merge"] section to .git/config (or ~/.gitconfig).
+# ─────────────────────────────────────────────────────────────────────────────
+
+composer.json     merge=composer-merge
+composer.lock     merge=composer-merge
+vendor/composer/* merge=composer-merge

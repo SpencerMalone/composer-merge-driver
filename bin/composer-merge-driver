@@ -1,0 +1,56 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+// ─── Resolve the project working directory from argv ────────────────────────
+// We need this before loading any autoloader so we can prefer the project's
+// own vendor/composer/composer over our bundled fallback.
+(static function () use ($argv): void {
+    $workingDir = null;
+    $count      = count($argv);
+    for ($i = 1; $i < $count; $i++) {
+        $arg = $argv[$i];
+        if (str_starts_with($arg, '--working-dir=')) {
+            $workingDir = substr($arg, strlen('--working-dir='));
+            break;
+        }
+        if ($arg === '--working-dir' && $i + 1 < $count) {
+            $workingDir = $argv[$i + 1];
+            break;
+        }
+    }
+    $workingDir ??= getcwd() ?: null;
+
+    // ── 1. Try the project's own vendor/autoload.php (preferred) ────────────
+    // This ensures we use the project's pinned version of Composer when
+    // running re-resolution, which may differ from our bundled version.
+    if ($workingDir !== null) {
+        $projectAutoload = rtrim($workingDir, '/\\') . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR . 'autoload.php';
+        if (is_file($projectAutoload)) {
+            require $projectAutoload;
+        }
+    }
+
+    // ── 2. Load our own autoloader (provides ComposerMergeDriver\* and,
+    //       if not already loaded from the project, Composer\*) ────────────
+    $ownAutoloaders = [
+        __DIR__ . '/../vendor/autoload.php',
+        __DIR__ . '/../../../autoload.php',
+    ];
+    foreach ($ownAutoloaders as $autoloader) {
+        if (file_exists($autoloader)) {
+            require $autoloader;
+            break;
+        }
+    }
+})();
+
+if (!class_exists(\ComposerMergeDriver\Application::class)) {
+    fwrite(STDERR, "composer-merge-driver: autoloader not found — run `composer install` first\n");
+    exit(2);
+}
+
+$application = new \ComposerMergeDriver\Application();
+/** @var list<string> $argv */
+exit($application->run($argv));
